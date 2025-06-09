@@ -20,6 +20,8 @@ class App:
     data: dict[str, Payload] = {}
 
     def __init__(self):
+
+        # Load previous data and convert to Payload objects
         with open("data.json", "r") as f:
             data = json.load(f)
             self.data = {
@@ -32,6 +34,8 @@ class App:
                 for k, v in data.items()
             }
 
+        # Initialize Dash app with a map element filling up the viewport
+        # Add an interval to poll the queue every 2 seconds
         self.dash = Dash(title="LoRaWAN Map", update_title=None)  # type:ignore
         self.dash.layout = html.Div(
             [
@@ -55,11 +59,15 @@ class App:
                 "width": "100vw",
             },
         )
+
+        # Add the `poll` method as a callback to the interval
         self.dash.callback(
             Output("live-map", "figure"),
             [Input("interval", "n_intervals")],
         )(self.poll)
 
+        # Initialize a queue shared between all threads
+        # Create a client thread for each MQTT connection that adds to the queue
         self.queue = Queue()
         for conn in secrets["connections"]:
             QueueClient(
@@ -71,19 +79,27 @@ class App:
                 self.queue,
             )
 
+        # Start the Dash app
         self.dash.run(debug=True, use_reloader=True)
 
     def poll(self, n: int):
         save = not self.queue.empty()
 
+        # Poll the queue for new payloads and add them to the dictionary
         while not self.queue.empty():
             payload = self.queue.get_nowait()
             self.data[payload.device_id] = payload
 
+        # Dump the dictionary to disk if new data was received
         if save:
             with open("data.json", "w") as f:
                 json.dump({k: p.dump() for k, p in self.data.items()}, f, indent=4)
 
+        # Convert to a DataFrame
+        # The `data` field is formatted as HTML for hover text, as plotly does not
+        # support variable hover text directly
+        # The `color` field is a hash of the data fields to give a unique color
+        # to each type of sensor
         df = pd.DataFrame.from_records(
             [
                 {
@@ -99,6 +115,8 @@ class App:
             ],
         )
 
+        # Build a scatter map fig using the frame
+        # The `hovertemplate` is taken directly from the `fmt` column using customdata
         fig = px.scatter_map(
             df,
             lat="lat",
@@ -121,6 +139,8 @@ class App:
 
 @dataclass
 class QueueClient(Client):
+    """Client that pushes payloads to a shared queue."""
+
     queue: Queue[Payload]
 
     def on_message(self, payload: Payload):
