@@ -2,9 +2,9 @@
 
 A demo application to receive sensor data from LoRaWAN devices from an MQTT broker and visualise it on a realtime interactive map.
 
-<div style="text-align: center;">
-    ![LoRaWAN Sensor Visualiser](./demo.png?raw=true)
-</div>
+<p align="center">
+        <img src="https://raw.githubusercontent.com/i-DAT/lorawan-map/main/demo.png?raw=true">
+</p>
 
 ## Usage
 
